@@ -86,10 +86,12 @@ void setup_memory_regions(struct kvm_data *kvm_data,
 
     memcpy(reg1_addr + 0x20000, boot_params, sizeof (struct boot_params));
 
+    fseek(kvm_data->bzImg, kvm_data->kernel_offset, SEEK_SET);
+
     int read = fread(reg2_addr, sizeof (char), kvm_data->kernel_size, kvm_data->bzImg);
     if ((size_t)read != kvm_data->kernel_size)
-        warn("Read size different from expected: got %u, expected %zu, eof: %d, error: %d, %x",
-                read, kvm_data->kernel_size, feof(kvm_data->bzImg), ferror(kvm_data->bzImg), reg2_addr);
+        warn("Read size different from expected: got %u, expected %zu, eof: %d, error: %d",
+                read, kvm_data->kernel_size, feof(kvm_data->bzImg), ferror(kvm_data->bzImg));
     free (boot_params);
 
 	struct kvm_userspace_memory_region region1 = {

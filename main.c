@@ -55,13 +55,21 @@ int main(int argc, char **argv)
 
 	ioctl(kvm_data.fd_vcpu, KVM_SET_REGS, &regs);
 
+    int size = ioctl(kvm_data.fd_kvm, KVM_GET_VCPU_MMAP_SIZE, 0);
+
+    kvm_data.kvm_run = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE,
+                            kvm_data.fd_vcpu, 0);
+
+    if (kvm_data.kvm_run == MAP_FAILED)
+        warn("mapping vcpu failed, requested : %d", size);
+
 	for (;;) {
 		int rc = ioctl(kvm_data.fd_vcpu, KVM_RUN, 0);
 
 		if (rc < 0)
 			warn("KVM_RUN");
 
-		printf("vm exit, sleeping 1s\n");
+		printf("vm exit, reason : %d, sleeping 1s\n", kvm_data.kvm_run->exit_reason);
 		sleep(1);
 	}
 

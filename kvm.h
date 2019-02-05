@@ -11,6 +11,8 @@ struct kvm_data {
   int fd_kvm;
   int fd_vm;
   int fd_vcpu;
+  int kvm_run_size;
+  struct kvm_run *kvm_run;
   struct kvm_userspace_memory_region regions[0];
 };
 
