@@ -13,6 +13,11 @@
 #include "options.h"
 #include "kvm.h"
 
+unsigned char out_o[] = {
+  0xb0, 0x61, 0x66, 0xba, 0xf8, 0x03, 0xee, 0xeb, 0xf7
+};
+unsigned int out_o_len = 9;
+
 int main(int argc, char **argv)
 {
     struct options *opts = parse_options(argc, argv);
@@ -20,8 +25,6 @@ int main(int argc, char **argv)
     struct kvm_data kvm_data;
 
     struct boot_params *boot_params = setup_boot_params(opts, &kvm_data);
-
-
 
 	kvm_data.fd_kvm = open("/dev/kvm", O_RDWR);
 	if (kvm_data.fd_kvm < 0) {
@@ -46,14 +49,8 @@ int main(int argc, char **argv)
 
     setup_sregs(&kvm_data);
 
-	struct kvm_regs regs;
-	ioctl(kvm_data.fd_vcpu, KVM_GET_REGS, &regs);
 
-	regs.rflags = 2;
-
-	regs.rip = 0x100000;
-
-	ioctl(kvm_data.fd_vcpu, KVM_SET_REGS, &regs);
+    setup_regs(&kvm_data);
 
     int size = ioctl(kvm_data.fd_kvm, KVM_GET_VCPU_MMAP_SIZE, 0);
 
@@ -69,7 +66,21 @@ int main(int argc, char **argv)
 		if (rc < 0)
 			warn("KVM_RUN");
 
+        struct kvm_regs regs;
+        ioctl(kvm_data.fd_vcpu, KVM_GET_REGS, &regs);
+
+        printf("rsi: %llu\n", regs.rsi);
+        printf("rip: %llu\n", regs.rip);
+
 		printf("vm exit, reason : %d, sleeping 1s\n", kvm_data.kvm_run->exit_reason);
+        switch(kvm_data.kvm_run->exit_reason)
+        {
+            case KVM_EXIT_INTERNAL_ERROR:
+                printf("suberror: %d\n", kvm_data.kvm_run->internal.suberror);
+                break;
+            default:
+                break;
+        }
 		sleep(1);
 	}
 

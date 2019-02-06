@@ -84,15 +84,14 @@ void setup_memory_regions(struct kvm_data *kvm_data,
         warn("mmap failed, requested %u", (1 << 31) - (1 << 20));
     }
 
-    memcpy(reg1_addr + 0x20000, boot_params, sizeof (struct boot_params));
 
     fseek(kvm_data->bzImg, kvm_data->kernel_offset, SEEK_SET);
 
     int read = fread(reg2_addr, sizeof (char), kvm_data->kernel_size, kvm_data->bzImg);
-    if ((size_t)read != kvm_data->kernel_size)
+    if ((size_t)read != kvm_data->kernel_size) {
         warn("Read size different from expected: got %u, expected %zu, eof: %d, error: %d",
                 read, kvm_data->kernel_size, feof(kvm_data->bzImg), ferror(kvm_data->bzImg));
-    free (boot_params);
+    }
 
 	struct kvm_userspace_memory_region region1 = {
 		.slot = 0,
@@ -103,10 +102,10 @@ void setup_memory_regions(struct kvm_data *kvm_data,
 	};
 
 	struct kvm_userspace_memory_region region2 = {
-		.slot = 0,
+		.slot = 1,
 		.flags = 0,
 		.guest_phys_addr = 0x100000,
-		.memory_size = 1 << 20,
+		.memory_size = (1 << 31) - (1 << 20),
 		.userspace_addr = (__u64)reg2_addr,
 	};
 
@@ -123,6 +122,9 @@ void setup_memory_regions(struct kvm_data *kvm_data,
     boot_params->e820_table[1].addr = kvm_data->regions[1].guest_phys_addr;
     boot_params->e820_table[1].size = kvm_data->regions[1].memory_size;
     boot_params->e820_table[1].type = E820_TYPE_RAM;
+
+    memcpy(reg1_addr + 0x20000, boot_params, sizeof (struct boot_params));
+    free (boot_params);
 }
 
 void setup_sregs(struct kvm_data *kvm_data)
@@ -136,30 +138,45 @@ void setup_sregs(struct kvm_data *kvm_data)
 		Seg.base = Base; \
 		Seg.limit = Limit; \
 		Seg.g = G; \
-        Seg.present = 1; \
+	} while (0)
+/*      Seg.present = 1; \
         Seg.dpl = 0; \
         Seg.s = 1; \
         Seg.avl = 1; \
-        Seg.l = 0; \
-	} while (0)
+        Seg.l = 0; \ */
 
 	set_segment_selector(sregs.cs, 0, ~0, 1);
 	set_segment_selector(sregs.ds, 0, ~0, 1);
-	set_segment_selector(sregs.es, 0, ~0, 1);
+	//set_segment_selector(sregs.es, 0, ~0, 1);
 	set_segment_selector(sregs.ss, 0, ~0, 1);
 
-	sregs.cs.selector = 0x10;
+	sregs.cs.db = 1;
+	sregs.ss.db = 1;
+	/*sregs.cs.selector = 0x10;
 	sregs.ds.selector = 0x18;
 	sregs.es.selector = 0x18;
 	sregs.ss.selector = 0x18;
     sregs.cs.type = 11;
     sregs.ds.type = 3;
     sregs.es.type = 3;
-    sregs.ss.type = 3;
+    sregs.ss.type = 3;*/
 
 #undef set_segment_selector
 
 	sregs.cr0 |= 1;
 
 	ioctl(kvm_data->fd_vcpu, KVM_SET_SREGS, &sregs);
+}
+
+void setup_regs(struct kvm_data *kvm_data)
+{
+	struct kvm_regs regs;
+	ioctl(kvm_data->fd_vcpu, KVM_GET_REGS, &regs);
+
+	regs.rflags = 2;
+
+	regs.rip = 0x100000;
+    //regs.rsi = 0x20000;
+
+	ioctl(kvm_data->fd_vcpu, KVM_SET_REGS, &regs);
 }

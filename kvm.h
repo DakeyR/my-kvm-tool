@@ -23,4 +23,5 @@ void setup_memory_regions(struct kvm_data *kvm_data,
                           struct boot_params *boot_params);
 
 void setup_sregs(struct kvm_data *kvm_data);
+void setup_regs(struct kvm_data *kvm_data);
 #endif
