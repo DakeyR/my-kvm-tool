@@ -9,9 +9,11 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <asm/bootparam.h>
+#include <stdarg.h>
 
 #include "options.h"
 #include "kvm.h"
+#include "serial.h"
 
 unsigned char out_o[] = {
   0xb0, 0x61, 0x66, 0xba, 0xf8, 0x03, 0xee, 0xeb, 0xf7
@@ -64,7 +66,9 @@ int main(int argc, char **argv)
     debug.control = KVM_GUESTDBG_ENABLE | KVM_GUESTDBG_SINGLESTEP | KVM_GUESTDBG_USE_SW_BP;
     ioctl(kvm_data.fd_vcpu, KVM_SET_GUEST_DEBUG, &debug);
 
-    //set_cpuid(&kvm_data);
+
+    init_uart_regs(&kvm_data.uart);
+    set_cpuid(&kvm_data);
 
 	for (;;) {
 		int rc = ioctl(kvm_data.fd_vcpu, KVM_RUN, 0);
@@ -72,32 +76,39 @@ int main(int argc, char **argv)
 		if (rc < 0)
 			warn("KVM_RUN");
 
-        printf("----------------\n");
+        //printf("----------------\n");
         struct kvm_regs regs;
         ioctl(kvm_data.fd_vcpu, KVM_GET_REGS, &regs);
 
 	    struct kvm_sregs sregs;
 	    ioctl(kvm_data.fd_vcpu, KVM_GET_SREGS, &sregs);
 
-        __builtin_dump_struct(&regs, &printf);
+        __builtin_dump_struct(&regs, &err_printf);
 
-        if (regs.rip == 0x100047)
-            __builtin_dump_struct(&sregs, &printf);
+        //if (regs.rip == 0x100047)
+        //    __builtin_dump_struct(&sregs, &err_printf);
 
         //printf("rsi: %llx\n", regs.rsi);
-        printf("rip: %llx\n", regs.rip);
+        fprintf(stderr,"rip: %llx\n", regs.rip);
 
-		printf("vm exit, reason : %d, sleeping 1s\n", kvm_data.kvm_run->exit_reason);
+		fprintf(stderr,"vm exit, reason : %d, sleeping 1s\n", kvm_data.kvm_run->exit_reason);
         switch(kvm_data.kvm_run->exit_reason)
         {
+            case KVM_EXIT_IO:
+                fprintf(stderr, "KVM_EXIT_IO ");
+                __u16 port = kvm_data.kvm_run->io.port;
+                if (port >= SERIAL_UART_BASE_ADDR
+                       || port <= SERIAL_UART_BASE_ADDR + 7)
+                    serial_uart_handle_io(&kvm_data.uart, (void *)&(kvm_data.kvm_run->io), kvm_data.kvm_run);
+                break;
             case KVM_EXIT_INTERNAL_ERROR:
-                printf("suberror: %d\n", kvm_data.kvm_run->internal.suberror);
+                fprintf(stderr, "suberror: %d\n", kvm_data.kvm_run->internal.suberror);
             case KVM_EXIT_SHUTDOWN:
                 return 1;
             default:
                 break;
         }
-        getchar();
+       // getchar();
 	}
 
     munmap((void *)kvm_data.regions[0].userspace_addr, kvm_data.regions[0].memory_size);

@@ -3,7 +3,8 @@ CFLAGS=-Wall -Wextra -g -std=c99
 
 SRC=main.c \
 		kvm.c \
-		options.c
+		options.c \
+		serial.c
 
 OBJS=$(SRC:.c=.o)
 

@@ -13,6 +13,15 @@
 
 #define E820_TYPE_RAM 1
 
+int err_printf(const char *str, ...)
+{
+    va_list args;
+    va_start(args, str);
+    fprintf(stderr, str, args);
+    va_end(args);
+    return 0;
+}
+
 struct boot_params *setup_boot_params(struct options *opts, 
                                       struct kvm_data *kvm_data){
     kvm_data->bzImg = fopen(opts->bzImgPath, "r");
@@ -127,7 +136,7 @@ void setup_memory_regions(struct kvm_data *kvm_data,
     boot_params->hdr.cmd_line_ptr = 0x50000;
     memcpy(reg1_addr + 0x20000, boot_params, sizeof (struct boot_params));
 
-    //__builtin_dump_struct(boot_params, &printf);
+    __builtin_dump_struct(boot_params, &err_printf);
     free (boot_params);
 
 
@@ -206,7 +215,7 @@ void setup_regs(struct kvm_data *kvm_data)
 
 void set_cpuid(struct kvm_data *kvm_data)
 {
-#define KVM_CPUID_SIGNATURE 0x40000000
+/*#define KVM_CPUID_SIGNATURE 0x40000000
 #define KVM_CPUID_FEATURES 0x40000001
 
     struct kvm_cpuid_entry entry1 = {
@@ -230,5 +239,36 @@ void set_cpuid(struct kvm_data *kvm_data)
     cpuid->entries[1] = entry2;
 
     ioctl(kvm_data->fd_vcpu, KVM_SET_CPUID, cpuid);
-
+*/
+      /* Set cpuid entry */
+  struct {
+    struct kvm_cpuid a;
+    struct kvm_cpuid_entry b[4];
+  } cpuid_info;
+  cpuid_info.a.nent = 4;
+  cpuid_info.a.entries[0].function = 0;
+  cpuid_info.a.entries[0].eax = 1;
+  cpuid_info.a.entries[0].ebx = 0;
+  cpuid_info.a.entries[0].ecx = 0;
+  cpuid_info.a.entries[0].edx = 0;
+  cpuid_info.a.entries[1].function = 1;
+  cpuid_info.a.entries[1].eax = 0x400;
+  cpuid_info.a.entries[1].ebx = 0;
+  cpuid_info.a.entries[1].ecx = 0;
+  cpuid_info.a.entries[1].edx = 0x701b179; /* SSE2, SSE, FXSR, PAT,
+					      CMOV, PGE, MTRR, CX8,
+					      PAE, MSR, TSC, PSE,
+					      FPU */
+  cpuid_info.a.entries[2].function = 0x80000000;
+  cpuid_info.a.entries[2].eax = 0x80000001;
+  cpuid_info.a.entries[2].ebx = 0;
+  cpuid_info.a.entries[2].ecx = 0;
+  cpuid_info.a.entries[2].edx = 0;
+  cpuid_info.a.entries[3].function = 0x80000001;
+  cpuid_info.a.entries[3].eax = 0;
+  cpuid_info.a.entries[3].ebx = 0;
+  cpuid_info.a.entries[3].ecx = 0;
+  cpuid_info.a.entries[3].edx = 0x20100800; /* AMD64, NX, SYSCALL */
+  if (ioctl (kvm_data->fd_vcpu, KVM_SET_CPUID, &cpuid_info.a) < 0)
+    err (1, "KVM_SET_CPUID failed");
 }

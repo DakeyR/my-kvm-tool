@@ -2,6 +2,7 @@
 #define _MY_KVM_
 
 #include "options.h"
+#include "serial.h"
 
 struct kvm_data {
   FILE *bzImg;
@@ -13,8 +14,11 @@ struct kvm_data {
   int fd_vcpu;
   int kvm_run_size;
   struct kvm_run *kvm_run;
-  struct kvm_userspace_memory_region regions[0];
+  struct uart_regs uart;
+  struct kvm_userspace_memory_region regions[2];
 };
+
+int err_printf(const char *str, ...);
 
 struct boot_params *setup_boot_params(struct options *opts,
                                       struct kvm_data *kvm_data);
