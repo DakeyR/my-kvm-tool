@@ -80,7 +80,8 @@ struct boot_params *setup_boot_params(struct options *opts,
 }
 
 void setup_memory_regions(struct kvm_data *kvm_data,
-                          struct boot_params *boot_params)
+                          struct boot_params *boot_params,
+                          struct options *opts)
 {
 
 	void *reg1_addr = mmap(NULL, 1 << 20, PROT_READ | PROT_WRITE,
@@ -132,15 +133,32 @@ void setup_memory_regions(struct kvm_data *kvm_data,
     boot_params->e820_table[1].size = kvm_data->regions[1].memory_size;
     boot_params->e820_table[1].type = E820_TYPE_RAM;
 
+    /*
     char cmd[] = "noapic noacpi pci=conf1 reboot=k panic=1 i8042.direct=1 i8042.dumbkbd=1 i8042.nopnp=1 console=ttyS0 earlyprintk=serial i8042.noaux=1 init=/bin/sh";
     memcpy(reg1_addr + 0x50000, cmd, sizeof(cmd));
-    boot_params->hdr.cmd_line_ptr = 0x50000;
+    */
+    boot_params->hdr.cmdline_size = setup_cmdline(kvm_data, opts);
+    boot_params->hdr.cmd_line_ptr = CMDLINE_ADDR;
     memcpy(reg1_addr + 0x20000, boot_params, sizeof (struct boot_params));
 
     __builtin_dump_struct(boot_params, &err_printf);
     free (boot_params);
 
 
+}
+
+int setup_cmdline(struct kvm_data *kvm_data, struct options *opts)
+{
+    char *reg = (void *)kvm_data->regions[0].userspace_addr;
+    int offset = 0;
+    for (int i = 0; i < opts->argc; i++)
+    {
+        int len = strlen(opts->cmdline[i]);
+        memcpy(reg + CMDLINE_ADDR + offset, opts->cmdline[i], len);
+        reg[CMDLINE_ADDR + offset + len] = ' ';
+        offset += len + 1;
+    }
+    return offset;
 }
 
 void setup_sregs(struct kvm_data *kvm_data)

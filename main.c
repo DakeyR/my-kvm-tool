@@ -24,7 +24,6 @@ int main(int argc, char **argv)
 {
     struct options *opts = parse_options(argc, argv);
     dump_options(opts);
-    return 0;
 
     struct kvm_data kvm_data;
 
@@ -54,7 +53,7 @@ int main(int argc, char **argv)
 
 	kvm_data.fd_vcpu = ioctl(kvm_data.fd_vm, KVM_CREATE_VCPU, 0);
 
-    setup_memory_regions(&kvm_data, boot_params);
+    setup_memory_regions(&kvm_data, boot_params, opts);
 
     setup_sregs(&kvm_data);
 

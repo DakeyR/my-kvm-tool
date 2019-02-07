@@ -45,6 +45,7 @@ struct options *parse_options(int argc, char **argv)
             else {
                 opts->cmdline = argv + i;
                 opts->argc = argc - i;
+                break;
             }
         }
         else {

@@ -4,6 +4,8 @@
 #include "options.h"
 #include "serial.h"
 
+#define CMDLINE_ADDR 0x50000
+
 struct kvm_data {
   FILE *bzImg;
   size_t img_size;
@@ -24,9 +26,11 @@ struct boot_params *setup_boot_params(struct options *opts,
                                       struct kvm_data *kvm_data);
 
 void setup_memory_regions(struct kvm_data *kvm_data,
-                          struct boot_params *boot_params);
+                          struct boot_params *boot_params,
+                          struct options *opts);
 
 void setup_sregs(struct kvm_data *kvm_data);
 void setup_regs(struct kvm_data *kvm_data);
 void set_cpuid(struct kvm_data *kvm_data);
+int setup_cmdline(struct kvm_data *kvm_data, struct options *opts);
 #endif
