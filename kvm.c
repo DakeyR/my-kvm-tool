@@ -51,7 +51,7 @@ struct boot_params *setup_boot_params(struct options *opts,
 
     boot_params->hdr.vid_mode = 0xFFFF;//"normal"
     boot_params->hdr.type_of_loader = 0xFF;
-    boot_params->hdr.loadflags = 0xE1;//0b11100001 (LOADED HIGH, USE SEGMENT, QUIET, USE HEAP
+    boot_params->hdr.loadflags |= KEEP_SEGMENTS;// (LOADED HIGH, USE SEGMENT, QUIET, USE HEAP
     boot_params->hdr.ramdisk_image = 0x0;
     boot_params->hdr.ramdisk_size = 0x0;
     //boot_params->hdr->heap_end_ptr = TODO;
@@ -65,7 +65,6 @@ struct boot_params *setup_boot_params(struct options *opts,
     kvm_data->img_size = ftell(kvm_data->bzImg);
     kvm_data->kernel_offset = (setup_sects + 1) * 512;
     kvm_data->kernel_size = kvm_data->img_size - kvm_data->kernel_offset;
-
 
     return boot_params;
 }
@@ -123,8 +122,15 @@ void setup_memory_regions(struct kvm_data *kvm_data,
     boot_params->e820_table[1].size = kvm_data->regions[1].memory_size;
     boot_params->e820_table[1].type = E820_TYPE_RAM;
 
+    char cmd[] = "console=ttyS0 earlyprintk=serial i8042.noaux=1";
+    memcpy(reg1_addr + 0x50000, cmd, sizeof(cmd));
+    boot_params->hdr.cmd_line_ptr = 0x50000;
     memcpy(reg1_addr + 0x20000, boot_params, sizeof (struct boot_params));
+
+    //__builtin_dump_struct(boot_params, &printf);
     free (boot_params);
+
+
 }
 
 void setup_sregs(struct kvm_data *kvm_data)
@@ -132,36 +138,39 @@ void setup_sregs(struct kvm_data *kvm_data)
 	struct kvm_sregs sregs;
 	ioctl(kvm_data->fd_vcpu, KVM_GET_SREGS, &sregs);
 
-
 #define set_segment_selector(Seg, Base, Limit, G) \
 	do { \
 		Seg.base = Base; \
 		Seg.limit = Limit; \
 		Seg.g = G; \
-	} while (0)
-/*      Seg.present = 1; \
+        Seg.present = 1; \
         Seg.dpl = 0; \
         Seg.s = 1; \
         Seg.avl = 1; \
-        Seg.l = 0; \ */
+        Seg.l = 0; \
+	} while (0)
 
 	set_segment_selector(sregs.cs, 0, ~0, 1);
 	set_segment_selector(sregs.ds, 0, ~0, 1);
-	//set_segment_selector(sregs.es, 0, ~0, 1);
+	set_segment_selector(sregs.es, 0, ~0, 1);
 	set_segment_selector(sregs.ss, 0, ~0, 1);
+
+#undef set_segment_selector
 
 	sregs.cs.db = 1;
 	sregs.ss.db = 1;
-	/*sregs.cs.selector = 0x10;
+	sregs.ds.db = 1;
+	sregs.es.db = 1;
+
+	sregs.cs.selector = 0x10;
 	sregs.ds.selector = 0x18;
 	sregs.es.selector = 0x18;
 	sregs.ss.selector = 0x18;
     sregs.cs.type = 11;
-    sregs.ds.type = 3;
-    sregs.es.type = 3;
-    sregs.ss.type = 3;*/
+    sregs.ds.type = 2;
+    sregs.es.type = 2;
+    sregs.ss.type = 2;
 
-#undef set_segment_selector
 
 	sregs.cr0 |= 1;
 
@@ -175,8 +184,51 @@ void setup_regs(struct kvm_data *kvm_data)
 
 	regs.rflags = 2;
 
+    /*
+     * struct kvm_regs { //out (KVM_GET_REGS) / in (KVM_SET_REGS)
+--__u64 rax, rbx, rcx, rdx;
+--__u64 rsi, rdi, rsp, rbp;
+--__u64 r8,  r9,  r10, r11;
+--__u64 r12, r13, r14, r15;
+--__u64 rip, rflags;
+    };
+    */
 	regs.rip = 0x100000;
-    //regs.rsi = 0x20000;
+    regs.rsi = 0x20000;
+    regs.rdi = 0x0;
+    regs.rbx = 0x0;
+    regs.rdx = 0x0;
+    regs.rbp = 0x0;
+    regs.rsp = 0x0;
 
 	ioctl(kvm_data->fd_vcpu, KVM_SET_REGS, &regs);
+}
+
+void set_cpuid(struct kvm_data *kvm_data)
+{
+#define KVM_CPUID_SIGNATURE 0x40000000
+#define KVM_CPUID_FEATURES 0x40000001
+
+    struct kvm_cpuid_entry entry1 = {
+        .function = KVM_CPUID_SIGNATURE,
+        .eax = 0x40000001,
+        .ebx = 0x4b4d564b,
+        .ecx = 0x564b4d56,
+        .edx = 0x4d,
+    };
+    struct kvm_cpuid_entry entry2 = {
+        .function = KVM_CPUID_FEATURES,
+        .eax = 0x0,
+        .ebx = 0x0,
+        .ecx = 0x0,
+        .edx = 0x0,
+    };
+
+    struct kvm_cpuid *cpuid = malloc(sizeof (struct kvm_cpuid) + sizeof (struct kvm_cpuid_entry));
+    cpuid->nent = 2;
+    cpuid->entries[0] = entry1;
+    cpuid->entries[1] = entry2;
+
+    ioctl(kvm_data->fd_vcpu, KVM_SET_CPUID, cpuid);
+
 }

@@ -54,11 +54,17 @@ int main(int argc, char **argv)
 
     int size = ioctl(kvm_data.fd_kvm, KVM_GET_VCPU_MMAP_SIZE, 0);
 
-    kvm_data.kvm_run = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE,
+    kvm_data.kvm_run = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_SHARED,
                             kvm_data.fd_vcpu, 0);
 
     if (kvm_data.kvm_run == MAP_FAILED)
         warn("mapping vcpu failed, requested : %d", size);
+
+    struct kvm_guest_debug debug;
+    debug.control = KVM_GUESTDBG_ENABLE | KVM_GUESTDBG_SINGLESTEP | KVM_GUESTDBG_USE_SW_BP;
+    ioctl(kvm_data.fd_vcpu, KVM_SET_GUEST_DEBUG, &debug);
+
+    //set_cpuid(&kvm_data);
 
 	for (;;) {
 		int rc = ioctl(kvm_data.fd_vcpu, KVM_RUN, 0);
@@ -66,22 +72,32 @@ int main(int argc, char **argv)
 		if (rc < 0)
 			warn("KVM_RUN");
 
+        printf("----------------\n");
         struct kvm_regs regs;
         ioctl(kvm_data.fd_vcpu, KVM_GET_REGS, &regs);
 
-        printf("rsi: %llu\n", regs.rsi);
-        printf("rip: %llu\n", regs.rip);
+	    struct kvm_sregs sregs;
+	    ioctl(kvm_data.fd_vcpu, KVM_GET_SREGS, &sregs);
+
+        __builtin_dump_struct(&regs, &printf);
+
+        if (regs.rip == 0x100047)
+            __builtin_dump_struct(&sregs, &printf);
+
+        //printf("rsi: %llx\n", regs.rsi);
+        printf("rip: %llx\n", regs.rip);
 
 		printf("vm exit, reason : %d, sleeping 1s\n", kvm_data.kvm_run->exit_reason);
         switch(kvm_data.kvm_run->exit_reason)
         {
             case KVM_EXIT_INTERNAL_ERROR:
                 printf("suberror: %d\n", kvm_data.kvm_run->internal.suberror);
-                break;
+            case KVM_EXIT_SHUTDOWN:
+                return 1;
             default:
                 break;
         }
-		sleep(1);
+        getchar();
 	}
 
     munmap((void *)kvm_data.regions[0].userspace_addr, kvm_data.regions[0].memory_size);

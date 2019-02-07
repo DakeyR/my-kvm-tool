@@ -1,4 +1,4 @@
-CC=gcc
+CC=clang
 CFLAGS=-Wall -Wextra -g -std=c99
 
 SRC=main.c \
