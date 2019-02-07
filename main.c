@@ -23,6 +23,8 @@ unsigned int out_o_len = 9;
 int main(int argc, char **argv)
 {
     struct options *opts = parse_options(argc, argv);
+    dump_options(opts);
+    return 0;
 
     struct kvm_data kvm_data;
 
@@ -44,6 +46,11 @@ int main(int argc, char **argv)
 
 	ioctl(kvm_data.fd_vm, KVM_CREATE_IRQCHIP, 0);
 
+    #define KVM_PIT_SPEAKER_DUMMY     0
+    struct kvm_pit_config pit_conf;
+    pit_conf.flags = KVM_PIT_SPEAKER_DUMMY;
+    ioctl(kvm_data.fd_vm, KVM_CREATE_PIT2, &pit_conf);
+    #undef KVM_PIT_SPEAKER_DUMMY
 
 	kvm_data.fd_vcpu = ioctl(kvm_data.fd_vm, KVM_CREATE_VCPU, 0);
 
@@ -83,13 +90,13 @@ int main(int argc, char **argv)
 	    struct kvm_sregs sregs;
 	    ioctl(kvm_data.fd_vcpu, KVM_GET_SREGS, &sregs);
 
-        __builtin_dump_struct(&regs, &err_printf);
+        //__builtin_dump_struct(&regs, &err_printf);
 
         //if (regs.rip == 0x100047)
-        //    __builtin_dump_struct(&sregs, &err_printf);
+        //__builtin_dump_struct(&sregs, &err_printf);
 
         //printf("rsi: %llx\n", regs.rsi);
-        fprintf(stderr,"rip: %llx\n", regs.rip);
+        //fprintf(stderr,"rip: %llx\n", regs.rip);
 
 		fprintf(stderr,"vm exit, reason : %d, sleeping 1s\n", kvm_data.kvm_run->exit_reason);
         switch(kvm_data.kvm_run->exit_reason)
@@ -98,8 +105,13 @@ int main(int argc, char **argv)
                 fprintf(stderr, "KVM_EXIT_IO ");
                 __u16 port = kvm_data.kvm_run->io.port;
                 if (port >= SERIAL_UART_BASE_ADDR
-                       || port <= SERIAL_UART_BASE_ADDR + 7)
+                       && port <= SERIAL_UART_BASE_ADDR + 7)
                     serial_uart_handle_io(&kvm_data.uart, (void *)&(kvm_data.kvm_run->io), kvm_data.kvm_run);
+                else if (port == 0x61)
+                    break;
+                else
+                    fprintf(stderr, "port: 0x%x\n", port);
+                //getchar();
                 break;
             case KVM_EXIT_INTERNAL_ERROR:
                 fprintf(stderr, "suberror: %d\n", kvm_data.kvm_run->internal.suberror);

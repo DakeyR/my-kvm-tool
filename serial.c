@@ -4,6 +4,9 @@
 
 void init_uart_regs(struct uart_regs *regs)
 {
+    __u8 *uart = (void *)regs;
+    for (int i = 0; i < 12; i++)
+        uart[i] = 0;
     regs->lsr = (1 << 6) | (1 << 5);
 }
 
@@ -61,4 +64,6 @@ void serial_uart_handle_io(struct uart_regs *regs,
                 regs->sr = *data;
             break;
     }
+
+    //__builtin_dump_struct(regs, &printf);
 }

@@ -75,6 +75,7 @@ struct boot_params *setup_boot_params(struct options *opts,
     kvm_data->kernel_offset = (setup_sects + 1) * 512;
     kvm_data->kernel_size = kvm_data->img_size - kvm_data->kernel_offset;
 
+    __builtin_dump_struct(boot_params, &err_printf);
     return boot_params;
 }
 
@@ -131,7 +132,7 @@ void setup_memory_regions(struct kvm_data *kvm_data,
     boot_params->e820_table[1].size = kvm_data->regions[1].memory_size;
     boot_params->e820_table[1].type = E820_TYPE_RAM;
 
-    char cmd[] = "console=ttyS0 earlyprintk=serial i8042.noaux=1";
+    char cmd[] = "noapic noacpi pci=conf1 reboot=k panic=1 i8042.direct=1 i8042.dumbkbd=1 i8042.nopnp=1 console=ttyS0 earlyprintk=serial i8042.noaux=1 init=/bin/sh";
     memcpy(reg1_addr + 0x50000, cmd, sizeof(cmd));
     boot_params->hdr.cmd_line_ptr = 0x50000;
     memcpy(reg1_addr + 0x20000, boot_params, sizeof (struct boot_params));
