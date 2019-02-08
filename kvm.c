@@ -314,8 +314,11 @@ void setup_initrd(struct kvm_data *kvm_data,
         return;
     }
 
-    void *addr = (char *)(kvm_data->regions[1].userspace_addr)
+    /*void *addr = (char *)(kvm_data->regions[1].userspace_addr)
                      + (kvm_data->regions[1].memory_size - size - 0x100000);
+                     */
+    void *addr = (char *)(kvm_data->regions[1].userspace_addr)
+                     + (kvm_data->kernel_size);
     int i = 0;
     while (i < size) {
         int rc = fread(addr + i, sizeof (char), size, initrd);
@@ -327,7 +330,7 @@ void setup_initrd(struct kvm_data *kvm_data,
         }
     }
 
-    boot_params->hdr.ramdisk_image = 0x37FFFFFF - size;
+    boot_params->hdr.ramdisk_image = kvm_data->kernel_size + 0x100000;//kvm_data->regions[1].memory_size - size;
     boot_params->hdr.ramdisk_size = size;
     fclose(initrd);
 }

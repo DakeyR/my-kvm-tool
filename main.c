@@ -109,7 +109,7 @@ int main(int argc, char **argv)
                 else if (port == 0x61)
                     break;
                 else
-                    fprintf(stderr, "port: 0x%x\n", port);
+                    fprintf(stderr, "%s port: 0x%x\n", kvm_data.kvm_run->io.direction ? "OUT" : "IN", port);
                 //getchar();
                 break;
             case KVM_EXIT_INTERNAL_ERROR:
