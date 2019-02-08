@@ -33,4 +33,7 @@ void setup_sregs(struct kvm_data *kvm_data);
 void setup_regs(struct kvm_data *kvm_data);
 void set_cpuid(struct kvm_data *kvm_data);
 int setup_cmdline(struct kvm_data *kvm_data, struct options *opts);
+void setup_initrd(struct kvm_data *kvm_data,
+                  struct options *opts,
+                  struct boot_params *boot_params);
 #endif

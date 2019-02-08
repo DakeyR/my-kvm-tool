@@ -60,7 +60,7 @@ struct boot_params *setup_boot_params(struct options *opts,
 
     boot_params->hdr.vid_mode = 0xFFFF;//"normal"
     boot_params->hdr.type_of_loader = 0xFF;
-    boot_params->hdr.loadflags |= KEEP_SEGMENTS;// (LOADED HIGH, USE SEGMENT, QUIET, USE HEAP
+    boot_params->hdr.loadflags |= KEEP_SEGMENTS | LOADED_HIGH | QUIET_FLAG | CAN_USE_HEAP;// (LOADED HIGH, USE SEGMENT, QUIET, USE HEAP
     boot_params->hdr.ramdisk_image = 0x0;
     boot_params->hdr.ramdisk_size = 0x0;
     //boot_params->hdr->heap_end_ptr = TODO;
@@ -139,6 +139,7 @@ void setup_memory_regions(struct kvm_data *kvm_data,
     */
     boot_params->hdr.cmdline_size = setup_cmdline(kvm_data, opts);
     boot_params->hdr.cmd_line_ptr = CMDLINE_ADDR;
+    setup_initrd(kvm_data, opts, boot_params);
     memcpy(reg1_addr + 0x20000, boot_params, sizeof (struct boot_params));
 
     __builtin_dump_struct(boot_params, &err_printf);
@@ -259,6 +260,7 @@ void set_cpuid(struct kvm_data *kvm_data)
 
     ioctl(kvm_data->fd_vcpu, KVM_SET_CPUID, cpuid);
 */
+    /* the following code is from the simplekvm by Hideki EIRAKU */
       /* Set cpuid entry */
   struct {
     struct kvm_cpuid a;
@@ -290,4 +292,42 @@ void set_cpuid(struct kvm_data *kvm_data)
   cpuid_info.a.entries[3].edx = 0x20100800; /* AMD64, NX, SYSCALL */
   if (ioctl (kvm_data->fd_vcpu, KVM_SET_CPUID, &cpuid_info.a) < 0)
     err (1, "KVM_SET_CPUID failed");
+}
+
+void setup_initrd(struct kvm_data *kvm_data,
+                  struct options *opts,
+                  struct boot_params *boot_params)
+{
+    FILE *initrd = fopen(opts->initrdPath, "r");
+    if (initrd == NULL) {
+        warn("unable to open initrd");
+        return;
+    }
+
+    int size = 0;
+    fseek(initrd, 0, SEEK_END);
+    size = ftell(initrd);
+    fseek(initrd, 0, SEEK_SET);
+    if (ftell(initrd) != 0) {
+        warn("position in initrd not reset");
+        fclose(initrd);
+        return;
+    }
+
+    void *addr = (char *)(kvm_data->regions[1].userspace_addr)
+                     + (kvm_data->regions[1].memory_size - size - 0x100000);
+    int i = 0;
+    while (i < size) {
+        int rc = fread(addr + i, sizeof (char), size, initrd);
+        i += rc;
+        if (ferror(initrd)) {
+            warn("error reading initrd");
+            fclose(initrd);
+            return;
+        }
+    }
+
+    boot_params->hdr.ramdisk_image = 0x37FFFFFF - size;
+    boot_params->hdr.ramdisk_size = size;
+    fclose(initrd);
 }
