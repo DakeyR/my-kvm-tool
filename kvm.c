@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <err.h>
 #include <asm/bootparam.h>
 #include <sys/mman.h>
@@ -87,7 +88,7 @@ void setup_memory_regions(struct kvm_data *kvm_data,
 	void *reg1_addr = mmap(NULL, 1 << 20, PROT_READ | PROT_WRITE,
 			      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
-	void *reg2_addr = mmap(NULL, (1 << 31) - (1 << 20), PROT_READ | PROT_WRITE,
+	void *reg2_addr = mmap(NULL, opts->ram_size - (1 << 20), PROT_READ | PROT_WRITE,
 			      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
     if (reg2_addr == MAP_FAILED) {
@@ -115,7 +116,7 @@ void setup_memory_regions(struct kvm_data *kvm_data,
 		.slot = 1,
 		.flags = 0,
 		.guest_phys_addr = 0x100000,
-		.memory_size = (1 << 31) - (1 << 20),
+		.memory_size = opts->ram_size - (1 << 20),
 		.userspace_addr = (__u64)reg2_addr,
 	};
 

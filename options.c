@@ -27,7 +27,7 @@ struct options *parse_options(int argc, char **argv)
     opts->bzImgPath = NULL;
     opts->initrdPath = NULL;
     opts->argc = 0;
-    opts->ram_size = 0;
+    opts->ram_size = (unsigned long long)(2048) * (1 << 20);
 
     for (int i = 1; i < argc; i++)
     {
@@ -51,7 +51,7 @@ struct options *parse_options(int argc, char **argv)
         else {
             switch (opt) {
                 case RAM:
-                    opts->ram_size = atoi(argv[i]);
+                    opts->ram_size = atoll(argv[i]) * (1 << 20);
                     break;
                 case INITRD:
                     if (opts->initrdPath)
