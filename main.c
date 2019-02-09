@@ -66,9 +66,11 @@ int main(int argc, char **argv)
     if (kvm_data.kvm_run == MAP_FAILED)
         warn("mapping vcpu failed, requested : %d", size);
 
+#if defined(DEBUG_LOGS)
     struct kvm_guest_debug debug;
     debug.control = KVM_GUESTDBG_ENABLE | KVM_GUESTDBG_SINGLESTEP | KVM_GUESTDBG_USE_SW_BP;
     ioctl(kvm_data.fd_vcpu, KVM_SET_GUEST_DEBUG, &debug);
+#endif
 
 
     init_uart_regs(&kvm_data.uart);
@@ -80,13 +82,15 @@ int main(int argc, char **argv)
 		if (rc < 0)
 			warn("KVM_RUN");
 
+#if defined(DEBUG_LOGS)
         struct kvm_regs regs;
         ioctl(kvm_data.fd_vcpu, KVM_GET_REGS, &regs);
 
 	    struct kvm_sregs sregs;
 	    ioctl(kvm_data.fd_vcpu, KVM_GET_SREGS, &sregs);
+#endif
 
-#if defined(__clang__)
+#if defined(DEBUG_LOGS) && defined(__clang__)
         __builtin_dump_struct(&regs, &err_printf);
         __builtin_dump_struct(&sregs, &err_printf);
 #endif

@@ -1,0 +1,22 @@
+MY_KVM
+======
+
+Author : gault_r
+
+Usage:
+-----
+  ./mykvm [OPTIONS] --initrd PATH_TO_INITRD PATH_TO_BZIMAGE KERNEL_OPTIONS
+
+Compiling:
+---------
+There are 3 levels of debug:
+  `make` -> no debug
+  `make debug` -> simple debug logs (prints the KVM_EXIT_CODE)
+  `make CC=clang debug` -> same as previous plus print content of registers and segment selectors.
+                    This option causes the execution to be quite long.
+
+About
+-----
+  This project uses the KVM api to create and run a virtual machine.
+  It does not unable interactions with the os : the linux kernel boots and we get a prompt but
+  the keyboard events are not handled.
