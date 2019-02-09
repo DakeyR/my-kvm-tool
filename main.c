@@ -45,11 +45,9 @@ int main(int argc, char **argv)
 
 	ioctl(kvm_data.fd_vm, KVM_CREATE_IRQCHIP, 0);
 
-    #define KVM_PIT_SPEAKER_DUMMY     0
     struct kvm_pit_config pit_conf;
-    pit_conf.flags = KVM_PIT_SPEAKER_DUMMY;
+    pit_conf.flags = 0;//KVM_PIT_SPEAKER_DUMMY;
     ioctl(kvm_data.fd_vm, KVM_CREATE_PIT2, &pit_conf);
-    #undef KVM_PIT_SPEAKER_DUMMY
 
 	kvm_data.fd_vcpu = ioctl(kvm_data.fd_vm, KVM_CREATE_VCPU, 0);
 
@@ -94,14 +92,12 @@ int main(int argc, char **argv)
         //if (regs.rip == 0x100047)
         //__builtin_dump_struct(&sregs, &err_printf);
 
-        //printf("rsi: %llx\n", regs.rsi);
-        //fprintf(stderr,"rip: %llx\n", regs.rip);
 
-		fprintf(stderr,"vm exit, reason : %d, sleeping 1s\n", kvm_data.kvm_run->exit_reason);
+		err_printf("vm exit, reason : %d, sleeping 1s\n", kvm_data.kvm_run->exit_reason);
         switch(kvm_data.kvm_run->exit_reason)
         {
             case KVM_EXIT_IO:
-                fprintf(stderr, "KVM_EXIT_IO ");
+                err_printf("KVM_EXIT_IO ");
                 __u16 port = kvm_data.kvm_run->io.port;
                 if (port >= SERIAL_UART_BASE_ADDR
                        && port <= SERIAL_UART_BASE_ADDR + 7)
@@ -109,11 +105,11 @@ int main(int argc, char **argv)
                 else if (port == 0x61)
                     break;
                 else
-                    fprintf(stderr, "%s port: 0x%x\n", kvm_data.kvm_run->io.direction ? "OUT" : "IN", port);
+                    err_printf("%s port: 0x%x\n", kvm_data.kvm_run->io.direction ? "OUT" : "IN", port);
                 //getchar();
                 break;
             case KVM_EXIT_INTERNAL_ERROR:
-                fprintf(stderr, "suberror: %d\n", kvm_data.kvm_run->internal.suberror);
+                err_printf("suberror: %d\n", kvm_data.kvm_run->internal.suberror);
             case KVM_EXIT_SHUTDOWN:
                 return 1;
             default:

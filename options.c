@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "options.h"
+#include "kvm.h"
 
 static int is_option(char *arg)
 {
@@ -60,7 +62,7 @@ struct options *parse_options(int argc, char **argv)
                     opts->initrdPath = strcpy(opts->initrdPath, argv[i]);
                     break;
                 default:
-                    fprintf("Unkown option %s\n", argv[i - 1]);
+                    err_printf("Unkown option %s\n", argv[i - 1]);
                     display_help(opts);
             }
             option_arg = 0;

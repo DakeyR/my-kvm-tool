@@ -2,7 +2,7 @@
 #define _OPTIONS_H_
 
 struct options {
-    size_t ram_size;
+    unsigned long long ram_size;
     int argc;
     char *initrdPath;
     char *bzImgPath;

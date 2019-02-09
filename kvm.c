@@ -92,7 +92,7 @@ void setup_memory_regions(struct kvm_data *kvm_data,
 			      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
     if (reg2_addr == MAP_FAILED) {
-        warn("mmap failed, requested %u", (1 << 31) - (1 << 20));
+        warn("mmap failed, requested %llu", opts->ram_size - (1 << 20));
     }
 
 
