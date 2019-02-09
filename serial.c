@@ -19,9 +19,6 @@ void serial_uart_handle_io(struct uart_regs *regs,
 
     int index = io->port - SERIAL_UART_BASE_ADDR;
 
-    if (io->direction == KVM_EXIT_IO_IN)
-        err_printf("KVM_EXIT_IO_IN %x\n", io->port);
-
     switch(index) {
         case 0:
             if (io->direction == KVM_EXIT_IO_IN) {
@@ -72,5 +69,4 @@ void serial_uart_handle_io(struct uart_regs *regs,
             break;
     }
 
-    //__builtin_dump_struct(regs, &printf);
 }

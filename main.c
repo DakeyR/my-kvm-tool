@@ -80,43 +80,45 @@ int main(int argc, char **argv)
 		if (rc < 0)
 			warn("KVM_RUN");
 
-        //printf("----------------\n");
         struct kvm_regs regs;
         ioctl(kvm_data.fd_vcpu, KVM_GET_REGS, &regs);
 
 	    struct kvm_sregs sregs;
 	    ioctl(kvm_data.fd_vcpu, KVM_GET_SREGS, &sregs);
 
-        //__builtin_dump_struct(&regs, &err_printf);
+#if defined(__clang__)
+        __builtin_dump_struct(&regs, &err_printf);
+        __builtin_dump_struct(&sregs, &err_printf);
+#endif
+        err_printf("vm exit, reason : %d, sleeping 1s\n", kvm_data.kvm_run->exit_reason);
 
-        //if (regs.rip == 0x100047)
-        //__builtin_dump_struct(&sregs, &err_printf);
 
-
-		err_printf("vm exit, reason : %d, sleeping 1s\n", kvm_data.kvm_run->exit_reason);
         switch(kvm_data.kvm_run->exit_reason)
         {
             case KVM_EXIT_IO:
-                err_printf("KVM_EXIT_IO ");
+                {
                 __u16 port = kvm_data.kvm_run->io.port;
                 if (port >= SERIAL_UART_BASE_ADDR
-                       && port <= SERIAL_UART_BASE_ADDR + 7)
+                       && port <= SERIAL_UART_BASE_ADDR + 7) {
                     serial_uart_handle_io(&kvm_data.uart, (void *)&(kvm_data.kvm_run->io), kvm_data.kvm_run);
+                    break;
+                }
                 else if (port == 0x61)
                     break;
-                else
-                    err_printf("%s port: 0x%x\n", kvm_data.kvm_run->io.direction ? "OUT" : "IN", port);
-                //getchar();
+                err_printf("KVM_EXIT_IO %s port: 0x%x\n", kvm_data.kvm_run->io.direction ? "OUT" : "IN", port);
                 break;
+                }
             case KVM_EXIT_INTERNAL_ERROR:
-                err_printf("suberror: %d\n", kvm_data.kvm_run->internal.suberror);
+                err_printf("KVM_EXIT_INTERNAL_ERROR: suberror: %d\n", kvm_data.kvm_run->internal.suberror);
             case KVM_EXIT_SHUTDOWN:
+                munmap((void *)kvm_data.regions[0].userspace_addr, kvm_data.regions[0].memory_size);
+                munmap((void *)kvm_data.regions[1].userspace_addr, kvm_data.regions[1].memory_size);
+                free(opts);
                 return 1;
             default:
                 break;
         }
-       // getchar();
-	}
+    }
 
     munmap((void *)kvm_data.regions[0].userspace_addr, kvm_data.regions[0].memory_size);
     munmap((void *)kvm_data.regions[1].userspace_addr, kvm_data.regions[1].memory_size);

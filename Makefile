@@ -1,4 +1,4 @@
-CC=clang
+CC?=clang
 CFLAGS=-Wall -Wextra -g -std=c99
 
 SRC=main.c \
@@ -9,7 +9,10 @@ SRC=main.c \
 OBJS=$(SRC:.c=.o)
 
 all: ${OBJS}
-	${CC} ${CLAGS} -o mykvm ${OBJS}
+	${CC} ${CFLAGS} -o mykvm ${OBJS}
+
+debug: CPPFLAGS+=-DDEBUG_LOGS
+debug: all
 
 clean:
 	rm -rf ${OBJS}

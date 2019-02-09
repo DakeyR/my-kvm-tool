@@ -18,7 +18,9 @@ int err_printf(const char *str, ...)
 {
     va_list args;
     va_start(args, str);
+#if defined(DEBUG_LOGS)
     fprintf(stderr, str, args);
+#endif
     va_end(args);
     return 0;
 }
@@ -76,7 +78,9 @@ struct boot_params *setup_boot_params(struct options *opts,
     kvm_data->kernel_offset = (setup_sects + 1) * 512;
     kvm_data->kernel_size = kvm_data->img_size - kvm_data->kernel_offset;
 
+#if defined(__clang__)
     __builtin_dump_struct(boot_params, &err_printf);
+#endif
     return boot_params;
 }
 
@@ -143,7 +147,9 @@ void setup_memory_regions(struct kvm_data *kvm_data,
     setup_initrd(kvm_data, opts, boot_params);
     memcpy(reg1_addr + 0x20000, boot_params, sizeof (struct boot_params));
 
+#if defined(__clang__)
     __builtin_dump_struct(boot_params, &err_printf);
+#endif
     free (boot_params);
 
 
